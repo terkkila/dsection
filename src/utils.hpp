@@ -17,6 +17,20 @@ namespace utils {
 
   // Generate seeds for random number generators
   int generateSeed();
+
+  template<typename StartIterator, typename StopIterator>
+  inline void print(StartIterator startIt, StopIterator stopIt, const char spacer = ' ') {
+
+    if ( startIt != stopIt ) {
+      cout << *startIt;
+      ++startIt;
+    }
+
+    while ( startIt != stopIt ) {
+      cout << spacer << *startIt;
+      ++startIt;
+    }
+  }
   
   // Chomps a string, i.e. removes all the trailing end-of-line characters
   string chomp(const string& str, const string& eof = "\r\n");
