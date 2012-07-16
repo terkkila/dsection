@@ -11,14 +11,14 @@ num_t distributions::normal(Engine& eng, const num_t mu, const num_t s2) {
   return( normrand(eng) );
 }
 
-num_t distributions::gamma(Engine& eng, const num_t alpha, const num_t beta) {
+num_t distributions::gamma(Engine& eng, const num_t shape, const num_t scale) {
   
-  // A random number generator Gamma(alpha,1)
-  gamma_distribution<num_t> gamrand(alpha);
+  // A random number generator Gamma(shape,1)
+  gamma_distribution<num_t> gamrand(shape);
   
-  // Get a random number from Gamma(alpha,1)
-  // and scale it to Gamma(alpha,beta)
-  return( gamrand(eng) / beta );
+  // Get a random number from Gamma(shape,1)
+  // and scale it to Gamma(shape,scale)
+  return( scale * gamrand(eng) );
 }
 
 vector<num_t> distributions::dirichlet(Engine& eng, const vector<num_t>& alpha) {

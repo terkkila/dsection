@@ -4,8 +4,6 @@
 #include <iostream>
 #include <vector>
 #include <cassert>
-#include <random>
-#include <functional>
 #include <cmath>
 #include <ctime>
 
@@ -21,14 +19,21 @@ static mutex mtx;
 static bool DEBUG = false;
 
 struct Parameters {
-  num_t mu;
-  num_t s2;
+
+  // x(t,i,c) is the pure expression of gene i in tissue t under experiment c
+  vector<vector<vector<num_t> > > x;
+
+  // lambda(i) is the inverse of variance of gene i
+  vector<num_t> lambda;
+
+  // These are nonsense parameters
   num_t alpha; 
   num_t beta;
   vector<num_t> dirAlpha;
+
 };
 
-void dsection_mcmc_samples(distributions::Engine* eng, const Parameters& params, const size_t nSamples);
+void dsection_mcmc_samples(distributions::Engine* eng, const Parameters& initParams, const size_t nSamples);
 
 int main(const int argc, char* const argv[]) {
 
@@ -39,9 +44,14 @@ int main(const int argc, char* const argv[]) {
 
   clock_t timeStart = time(0);
 
-  // Number of threads
+  // Number of threads and samples for MCMC
   size_t nThreads = static_cast<size_t>(atoi(argv[1]));
   size_t nSamples = static_cast<size_t>(atoi(argv[2]));
+
+  // Number of cell types and other parameters, to-be derived from data
+  size_t nCellTypes = 3;
+  size_t nGenes = 10000;
+  size_t nExperiments = 3;
 
   cout << endl
        << "MCMC set-up:" << endl
@@ -51,13 +61,39 @@ int main(const int argc, char* const argv[]) {
   // Engines for probability distributiona
   vector<distributions::Engine> eng(nThreads);
 
-  // Thread initializers
+  // Initial parameters for Dirichlet distribution
   vector<num_t> dirAlpha(3);
   dirAlpha[0] = 1;
   dirAlpha[1] = 5;
   dirAlpha[2] = 3;
 
-  vector<Parameters> parameters(nThreads,{1,2,3,4,dirAlpha});
+  // TEMPORARY: engine for initialization
+  distributions::Engine initEngine;
+  initEngine.seed(1000);
+
+  // Initialize x(t,i,c)'s;
+  vector<vector<vector<num_t> > > x(nCellTypes,vector<vector<num_t> >(nGenes,vector<num_t>(nExperiments)));
+  //vector<num_t> x(nCellTypes*nGenes*nExperiments);
+  for ( size_t t = 0; t < nCellTypes; ++t ) {
+    for ( size_t i = 0; i < nGenes; ++i ) {
+      for ( size_t c = 0; c < nExperiments; ++c ) {
+	// Just random initialization for now
+	x[t][i][c] = distributions::normal(initEngine,2,4);
+      }
+    }
+  }
+
+  // Initialize lambda(i)'s
+  vector<num_t> lambda(nGenes);
+  for ( size_t i = 0; i < nGenes; ++i ) {
+    // Just random initialization for now
+    lambda[i] = distributions::gamma(initEngine,2,2);
+  }
+
+  // Place initialization into the Parameter struct
+  vector<Parameters> initParams(nThreads,{x,lambda,3,4,dirAlpha});
+
+  // Initialize engines for random number generators
   for ( unsigned int threadIdx = 0; threadIdx < nThreads; ++threadIdx ) {
     eng[threadIdx].seed(threadIdx);
   }
@@ -65,7 +101,7 @@ int main(const int argc, char* const argv[]) {
   // Generate threads
   thread thr[nThreads];
   for ( unsigned int threadIdx = 0; threadIdx < nThreads; ++threadIdx ) {
-    thr[threadIdx] = thread(dsection_mcmc_samples,&eng[threadIdx],parameters[threadIdx],nSamples);
+    thr[threadIdx] = thread(dsection_mcmc_samples,&eng[threadIdx],initParams[threadIdx],nSamples);
   }  
     
   // Join results
@@ -79,27 +115,45 @@ int main(const int argc, char* const argv[]) {
   return( EXIT_SUCCESS );
 }
 
-void dsection_mcmc_samples(distributions::Engine* eng, const Parameters& params, const size_t nSamples) {
+void dsection_mcmc_samples(distributions::Engine* eng, const Parameters& initParams, const size_t nSamples) {
+
+  Parameters params = initParams;
+
+  size_t nCellTypes = initParams.x.size();
+  size_t nGenes = initParams.x.begin()->size();
+  size_t nExperiments = initParams.x.begin()->begin()->size();
 
   if ( DEBUG ) {    
     mtx.lock();
-    for ( size_t i = 0; i < nSamples; ++i ) {
-      cout << "ENGINE " << eng << ", SEED " << 1 << ", SAMPLE " << i << endl
-	   << " - Normal(" << params.mu << "," << params.s2 << ") => " << distributions::normal(*eng,params.mu,params.s2) << endl
-	   << " - Gamma(" << params.alpha << "," << params.beta << ")  => " << distributions::gamma(*eng,params.alpha,params.beta) << endl
-	   << " - Dirichlet(";
-      utils::print(params.dirAlpha.begin(),params.dirAlpha.end(),',');
-      cout << ") => (";
-      vector<num_t> sample = distributions::dirichlet(*eng,params.dirAlpha);
-      utils::print(sample.begin(),sample.end(),',');
-      cout << ")" << endl;
+    for ( size_t s = 0; s < nSamples; ++s ) {
+      for ( size_t t = 0; t < nCellTypes; ++t ) {
+	for ( size_t i = 0; i < nGenes; ++i ) {
+	  for ( size_t c = 0; c < nExperiments; ++c ) {
+	    cout << "ENGINE " << eng << ", SAMPLE " << s << endl
+		 << " - Normal(" << params.x[t][i][c] << "," << 1.0/params.lambda[i] << ") => " << distributions::normal(*eng,params.x[t][i][c],1.0/params.lambda[i]) << endl
+		 << " - Gamma(" << params.alpha << "," << params.beta << ")  => " << distributions::gamma(*eng,params.alpha,params.beta) << endl
+		 << " - Dirichlet(";
+	    utils::print(params.dirAlpha.begin(),params.dirAlpha.end(),',');
+	    cout << ") => (";
+	    vector<num_t> sample = distributions::dirichlet(*eng,params.dirAlpha);
+	    utils::print(sample.begin(),sample.end(),',');
+	    cout << ")" << endl;
+	  }
+	}
+      }
     }
     mtx.unlock();
   } else {
-    for ( size_t i = 0; i < nSamples; ++i ) {
-      num_t foo1 = distributions::normal(*eng,params.mu,params.s2);
-      num_t foo2 = distributions::gamma(*eng,params.alpha,params.beta);
-      vector<num_t> foo3 = distributions::dirichlet(*eng,params.dirAlpha);
+    for ( size_t s = 0; s < nSamples; ++s ) {
+      for ( size_t t = 0; t < nCellTypes; ++t ) {
+	for ( size_t i = 0; i < nGenes; ++i ) {
+	  for ( size_t c = 0; c < nExperiments; ++c ) {
+	    num_t foo1 = distributions::normal(*eng,params.x[t][i][c],1.0/params.lambda[i]);
+	    num_t foo2 = distributions::gamma(*eng,params.alpha,params.beta);
+	    vector<num_t> foo3 = distributions::dirichlet(*eng,params.dirAlpha);
+	  }
+	}
+      }
     }
   }
   

@@ -8,11 +8,12 @@
 
 namespace distributions {
 
+  //typedef std::mt19937 Engine;
   typedef std::ranlux_base_01 Engine;
 
   datadefs::num_t normal(Engine& eng, const datadefs::num_t mu, const datadefs::num_t s2);
   
-  datadefs::num_t gamma(Engine& eng, const datadefs::num_t alpha, const datadefs::num_t beta);
+  datadefs::num_t gamma(Engine& eng, const datadefs::num_t shape, const datadefs::num_t scale);
   
   std::vector<datadefs::num_t> dirichlet(Engine& eng, const std::vector<datadefs::num_t>& alpha);
 
