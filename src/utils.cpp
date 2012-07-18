@@ -1,17 +1,8 @@
 #include "utils.hpp"
 
 #include <algorithm>
-#include <ctime>
 #include <ios>
 #include <cassert>
-
-int utils::generateSeed() {
-  
-  time_t now;
-  time(&now);
-  return( clock() + now );
-  
-}
 
 // Removes all newline and any trailing characters
 string utils::chomp(const string& str, const string& nl) {
@@ -96,14 +87,6 @@ vector<string> utils::split(istream& streamObj, const char delimiter, const stri
 
   return( items );
 
-}
-
-vector<string> utils::readListFromFile(const string& fileName, const char delimiter) {
-  
-  ifstream streamObj( fileName.c_str() );
-  assert(streamObj.good());
-  
-  return( utils::split(streamObj,delimiter) );
 }
 
 vector<size_t> utils::range(const size_t n) {

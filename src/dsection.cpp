@@ -33,11 +33,11 @@ struct Parameters {
 
 };
 
-void dsection_mcmc_samples(distributions::Engine* eng, const Parameters& initParams, const size_t nSamples);
+void dsection_mcmc_samples(distributions::Engine* eng, const Parameters& initParams, const size_t nBurnIn, const size_t nSamples);
 
 int main(const int argc, char* const argv[]) {
 
-  assert( argc == 3 );
+  assert( argc == 4 );
 
   // Store the start time (in clock cycles) just before the analysis
   //clock_t clockStart( clock() );
@@ -46,7 +46,8 @@ int main(const int argc, char* const argv[]) {
 
   // Number of threads and samples for MCMC
   size_t nThreads = static_cast<size_t>(atoi(argv[1]));
-  size_t nSamples = static_cast<size_t>(atoi(argv[2]));
+  size_t nBurnIn = static_cast<size_t>(atoi(argv[2]));
+  size_t nSamples = static_cast<size_t>(atoi(argv[3]));
 
   // Number of cell types and other parameters, to-be derived from data
   size_t nCellTypes = 3;
@@ -56,6 +57,7 @@ int main(const int argc, char* const argv[]) {
   cout << endl
        << "MCMC set-up:" << endl
        << " - " << nThreads << " threads" << endl
+       << " - " << nBurnIn << " burn-in" << endl
        << " - " << nSamples << " samples" << endl << endl;
 
   // Engines for probability distributiona
@@ -101,7 +103,7 @@ int main(const int argc, char* const argv[]) {
   // Generate threads
   thread thr[nThreads];
   for ( unsigned int threadIdx = 0; threadIdx < nThreads; ++threadIdx ) {
-    thr[threadIdx] = thread(dsection_mcmc_samples,&eng[threadIdx],initParams[threadIdx],nSamples);
+    thr[threadIdx] = thread(dsection_mcmc_samples,&eng[threadIdx],initParams[threadIdx],nBurnIn,nSamples);
   }  
     
   // Join results
@@ -115,7 +117,14 @@ int main(const int argc, char* const argv[]) {
   return( EXIT_SUCCESS );
 }
 
-void dsection_mcmc_samples(distributions::Engine* eng, const Parameters& initParams, const size_t nSamples) {
+num_t update_x_tic(const vector<vector<num_t> >& y_c, const num_t lambda_i, const vector<vector<num_t> >& p_c) {
+
+  return( datadefs::NUM_NAN ); 
+
+}
+
+
+void dsection_mcmc_samples(distributions::Engine* eng, const Parameters& initParams, const size_t nBurnIn, const size_t nSamples) {
 
   Parameters params = initParams;
 
@@ -123,9 +132,11 @@ void dsection_mcmc_samples(distributions::Engine* eng, const Parameters& initPar
   size_t nGenes = initParams.x.begin()->size();
   size_t nExperiments = initParams.x.begin()->begin()->size();
 
+  size_t nTotSamples = nBurnIn + nSamples;
+
   if ( DEBUG ) {    
     mtx.lock();
-    for ( size_t s = 0; s < nSamples; ++s ) {
+    for ( size_t s = 0; s < nTotSamples; ++s ) {
       for ( size_t t = 0; t < nCellTypes; ++t ) {
 	for ( size_t i = 0; i < nGenes; ++i ) {
 	  for ( size_t c = 0; c < nExperiments; ++c ) {
@@ -133,10 +144,10 @@ void dsection_mcmc_samples(distributions::Engine* eng, const Parameters& initPar
 		 << " - Normal(" << params.x[t][i][c] << "," << 1.0/params.lambda[i] << ") => " << distributions::normal(*eng,params.x[t][i][c],1.0/params.lambda[i]) << endl
 		 << " - Gamma(" << params.alpha << "," << params.beta << ")  => " << distributions::gamma(*eng,params.alpha,params.beta) << endl
 		 << " - Dirichlet(";
-	    utils::print(params.dirAlpha.begin(),params.dirAlpha.end(),',');
+	    utils::write(cout,params.dirAlpha.begin(),params.dirAlpha.end(),',');
 	    cout << ") => (";
 	    vector<num_t> sample = distributions::dirichlet(*eng,params.dirAlpha);
-	    utils::print(sample.begin(),sample.end(),',');
+	    utils::write(cout,sample.begin(),sample.end(),',');
 	    cout << ")" << endl;
 	  }
 	}
@@ -144,7 +155,7 @@ void dsection_mcmc_samples(distributions::Engine* eng, const Parameters& initPar
     }
     mtx.unlock();
   } else {
-    for ( size_t s = 0; s < nSamples; ++s ) {
+    for ( size_t s = 0; s < nTotSamples; ++s ) {
       for ( size_t t = 0; t < nCellTypes; ++t ) {
 	for ( size_t i = 0; i < nGenes; ++i ) {
 	  for ( size_t c = 0; c < nExperiments; ++c ) {

@@ -15,19 +15,16 @@ using namespace std;
 
 namespace utils {
 
-  // Generate seeds for random number generators
-  int generateSeed();
-
   template<typename StartIterator, typename StopIterator>
-  inline void print(StartIterator startIt, StopIterator stopIt, const char spacer = ' ') {
+  inline void write(ostream& os, StartIterator startIt, StopIterator stopIt, const char delimiter = ' ') {
 
     if ( startIt != stopIt ) {
-      cout << *startIt;
+      os << *startIt;
       ++startIt;
     }
 
     while ( startIt != stopIt ) {
-      cout << spacer << *startIt;
+      os << delimiter << *startIt;
       ++startIt;
     }
   }
@@ -45,55 +42,6 @@ namespace utils {
   
   // Splits a delimited stream
   vector<string> split(istream& streamObj, const char delimiter, const string& wh = " ");
-
-  // Reads a list of items from a file
-  vector<string> readListFromFile(const string& fileName, const char delimiter);
-
-  // Write to file
-  template <typename InputIterator>
-  void printToFile(InputIterator begin, InputIterator end, const char delimiter, const string& fileName) {
-    
-    ofstream toFile(fileName.c_str());
-
-    if ( begin != end ) {
-      toFile << *begin;
-      ++begin;
-    }
-
-    while ( begin != end ) {
-      toFile << delimiter << *begin;
-      ++begin;
-    }
-
-    toFile.close();
-
-  }
-
-  template <typename InputIterator>
-  string join(InputIterator begin, InputIterator end, const char delimiter) {
-
-    string ret("");
-    
-    if ( begin == end ) {
-      return(ret);
-    }
-
-    stringstream ss;
-    ss << *begin;
-    ++begin;
-    
-    while( begin != end ) {
-      
-      ss << delimiter << *begin;
-
-      ++begin;
-
-    }
-
-    ss >> ret;
-    return( ret );
-
-  }
 
   template <typename T>
   T str2(const string& str) {

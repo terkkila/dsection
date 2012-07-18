@@ -4,12 +4,15 @@
 #include <cstdlib>
 #include <vector>
 #include <random>
+#include <ctime>
 #include "datadefs.hpp"
 
 namespace distributions {
 
   //typedef std::mt19937 Engine;
   typedef std::ranlux_base_01 Engine;
+
+  inline unsigned int getSeed() { return( clock() ); }
 
   datadefs::num_t normal(Engine& eng, const datadefs::num_t mu, const datadefs::num_t s2);
   

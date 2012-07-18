@@ -1,8 +1,8 @@
 COMPILER = g++44
 CFLAGS = -std=c++0x -O2
-DFLAGS = -p -pg
+DFLAGS = -g -pg
 TFLAGS = -pthread
-SOURCES = src/dsection.cpp src/utils.cpp src/distributions.cpp
+SOURCES = src/dsection.cpp src/utils.cpp src/distributions.cpp src/datadefs.cpp
 
 all: dsection
 
